@@ -158,14 +158,16 @@ function updateFile(
 }
 
 function isAlreadyConfigured(): boolean {
-  const pkgPath = join(ROOT_DIR, "package.json");
-  if (!existsSync(pkgPath)) {
+  const tauriConfPath = join(ROOT_DIR, "src-tauri", "tauri.conf.json");
+  if (!existsSync(tauriConfPath)) {
     return false;
   }
 
   try {
-    const pkg = JSON.parse(readFileSync(pkgPath, "utf-8"));
-    return pkg.name !== TEMPLATE_NAME;
+    const content = readFileSync(tauriConfPath, "utf-8");
+    // If tauri.conf.json still has the template's default productName,
+    // setup hasn't run yet
+    return !TAURI_PRODUCT_NAME_REGEX.test(content);
   } catch {
     return false;
   }
