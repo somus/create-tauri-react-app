@@ -1,31 +1,17 @@
-// Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-
 #[tauri::command]
 #[specta::specta]
 pub fn greet(name: &str) -> Result<String, String> {
-    log::debug!("greet command called with name: {}", name);
+    let name = name.trim();
 
-    // Validation: check if name is empty
-    if name.trim().is_empty() {
-        log::warn!("greet command received empty name");
+    if name.is_empty() {
         return Err("Name cannot be empty".to_string());
     }
 
-    // Validation: check length (basic example)
     if name.len() > 100 {
-        log::warn!("greet command received name too long: {} chars", name.len());
         return Err("Name is too long (max 100 characters)".to_string());
     }
 
-    // Sanitization: trim whitespace
-    let sanitized_name = name.trim();
-    log::info!("Successfully greeted: {}", sanitized_name);
-
-    // Success case
-    Ok(format!(
-        "Hello, {}! You've been greeted from Rust!",
-        sanitized_name
-    ))
+    Ok(format!("Hello, {}! You've been greeted from Rust!", name))
 }
 
 #[cfg(test)]

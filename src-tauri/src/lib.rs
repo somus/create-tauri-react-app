@@ -18,15 +18,14 @@ pub fn run() {
         .expect("Failed to export typescript bindings");
 
     tauri::Builder::default()
-        // Configure logging with multiple targets
         .plugin(
             tauri_plugin_log::Builder::new()
                 .targets([
-                    Target::new(TargetKind::Stdout),                     // Console output
-                    Target::new(TargetKind::LogDir { file_name: None }), // Log files in app data
-                    Target::new(TargetKind::Webview),                    // Browser console
+                    Target::new(TargetKind::Stdout),
+                    Target::new(TargetKind::LogDir { file_name: None }),
+                    Target::new(TargetKind::Webview),
                 ])
-                .level(log::LevelFilter::Debug)
+                .level(log::LevelFilter::Info)
                 .build(),
         )
         .plugin(tauri_plugin_opener::init())
@@ -35,7 +34,6 @@ pub fn run() {
         .invoke_handler(builder.invoke_handler())
         .setup(move |app| {
             builder.mount_events(app);
-            log::info!("Application started");
             Ok(())
         })
         .run(tauri::generate_context!())
