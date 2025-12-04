@@ -264,7 +264,7 @@ This template includes automated release workflows using GitHub Actions with [re
 
 1. **Push conventional commits** to `main` (e.g., `feat: add feature`, `fix: bug fix`)
 2. **release-please** automatically creates/updates a Release PR with version bumps and changelog
-3. **Merge the Release PR** to trigger multi-platform builds
+3. **Merge the Release PR** to automatically build for all platforms
 4. **Review and publish** the draft GitHub Release
 
 ### Setup Required

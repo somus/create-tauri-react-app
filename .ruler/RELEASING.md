@@ -25,12 +25,12 @@ To set up trusted publishing for the package:
    - **Repository**: `create-tauri-react-app`
    - **Workflow filename**: `publish.yml`
 
-The workflow already has the required `id-token: write` permission configured.
+The workflow has the required `id-token: write` permission configured for OIDC authentication.
 
 ### How It Works
 
-The `publish-npm` job in `.github/workflows/publish.yml` runs in parallel with Tauri builds.
-When a release tag is pushed, it publishes the package to npm using OIDC authentication.
+The `publish-npm` job in `.github/workflows/publish.yml` runs after release-please creates a release.
+It uses the `--provenance` flag with npm publish to authenticate via OIDC (no NPM_TOKEN secret needed).
 Provenance attestations are automatically generated.
 
 This job is automatically removed when users run `bun run setup` because the
@@ -39,45 +39,56 @@ This job is automatically removed when users run `bun run setup` because the
 
 ## Overview
 
-The release system uses two GitHub Actions workflows:
-
-1. **release-please.yml** - Automatically creates Release PRs with version bumps and changelog updates
-2. **publish.yml** - Builds the app for all platforms and creates a draft GitHub Release
+The release system uses a single GitHub Actions workflow (`publish.yml`) that handles both release management and building:
 
 ```
 Push commits to main
         │
         ▼
 ┌───────────────────────────────┐
-│  release-please creates/      │
-│  updates Release PR with:     │
-│  • Version bumps              │
-│  • CHANGELOG.md updates       │
+│  Job: release-please          │
+│                               │
+│  Analyzes commits and either: │
+│  • Creates/updates Release PR │
+│    (if releasable changes)    │
+│  OR                           │
+│  • Creates tag + GitHub       │
+│    Release (when PR merged)   │
+│                               │
+│  Output: release_created,     │
+│          tag_name             │
 └───────────────┬───────────────┘
                 │
-        Merge Release PR
+        release_created?
                 │
-                ▼
+        ┌───────┴───────┐
+        │               │
+       true           false
+        │               │
+        ▼               ▼
+┌───────────────┐   (workflow ends,
+│ Job: publish- │    no builds)
+│ npm           │
+│ (template     │
+│  repo only)   │
+└───────┬───────┘
+        │
+        ▼
 ┌───────────────────────────────┐
-│  Tag created (v1.2.3)         │
-│  Triggers publish.yml         │
-└───────────────┬───────────────┘
-                │
-                ▼
-┌───────────────────────────────┐
-│  Build on all platforms:      │
+│  Job: publish-tauri           │
+│  (parallel builds)            │
+│                               │
 │  • macOS ARM64 & Intel        │
 │  • Windows x64                │
 │  • Linux x64                  │
-└───────────────┬───────────────┘
-                │
-                ▼
-┌───────────────────────────────┐
-│  Draft GitHub Release with:   │
-│  • All platform binaries      │
+│                               │
+│  Uploads to GitHub Release:   │
+│  • Platform binaries          │
 │  • Auto-updater JSON          │
 └───────────────────────────────┘
 ```
+
+The `publish-npm` job only exists in the template repository and is removed when users run the setup script.
 
 ## Prerequisites
 
@@ -296,8 +307,7 @@ During `bun run setup`, you selected which platforms to build. To change this la
 
 | File | Purpose |
 |------|---------|
-| `.github/workflows/release-please.yml` | Creates Release PRs |
-| `.github/workflows/publish.yml` | Builds and publishes releases |
+| `.github/workflows/publish.yml` | Release management and builds |
 | `.github/release-please-config.json` | release-please configuration |
 | `.github/.release-please-manifest.json` | Tracks current version |
 | `src-tauri/tauri.conf.json` | Updater configuration |

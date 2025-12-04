@@ -496,18 +496,35 @@ function generatePublishWorkflow(
 `
     : "";
 
-  return `name: Publish Release
+  return `name: Release
 
 on:
   push:
-    tags:
-      - "v*"
+    branches:
+      - main
 
 permissions:
   contents: write
+  pull-requests: write
 
 jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    outputs:
+      release_created: \${{ steps.release.outputs.release_created }}
+      tag_name: \${{ steps.release.outputs.tag_name }}
+      version: \${{ steps.release.outputs.version }}
+    steps:
+      - uses: googleapis/release-please-action@v4
+        id: release
+        with:
+          token: \${{ secrets.GITHUB_TOKEN }}
+          config-file: .github/release-please-config.json
+          manifest-file: .github/.release-please-manifest.json
+
   publish-tauri:
+    needs: release-please
+    if: \${{ needs.release-please.outputs.release_created }}
     strategy:
       fail-fast: false
       matrix:
@@ -536,13 +553,16 @@ ${ubuntuStep}
       - name: Install frontend dependencies
         run: bun install --frozen-lockfile
 
+      - name: Generate TypeScript bindings
+        run: cd src-tauri && cargo run --bin generate_bindings
+
       - name: Build Tauri app
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: \${{ secrets.GITHUB_TOKEN }}${signingEnv}
         with:
-          tagName: \${{ github.ref_name }}
-          releaseName: "\${{ github.ref_name }}"
+          tagName: \${{ needs.release-please.outputs.tag_name }}
+          releaseName: "\${{ needs.release-please.outputs.tag_name }}"
           releaseBody: "See [CHANGELOG](https://github.com/\${{ github.repository }}/blob/main/CHANGELOG.md) for details."
           releaseDraft: true
           prerelease: false
